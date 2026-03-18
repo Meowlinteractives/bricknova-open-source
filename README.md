@@ -2,6 +2,8 @@
 
 A lightweight browser-based game hub.
 
+*not maintained
+
 ## 📁 Project Structure (simplified)
 
 - `/games/` → individual game HTML files
