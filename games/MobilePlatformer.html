@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2D Platformer - PC & Mobile</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            touch-action: manipulation;
+        }
+
+        .game-container {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            width: 100%;
+            height: auto;
+            max-width: 800px;
+            border-radius: 10px;
+            background: #0f3460;
+            touch-action: none;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            gap: 20px;
+        }
+
+        .mobile-controls {
+            display: flex;
+            gap: 15px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .control-btn {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 50px;
+            box-shadow: 0 5px 0 #0f3460;
+            cursor: pointer;
+            user-select: none;
+            touch-action: manipulation;
+            min-width: 80px;
+            text-align: center;
+            transition: all 0.1s ease;
+        }
+
+        .control-btn:active {
+            transform: translateY(5px);
+            box-shadow: none;
+        }
+
+        .control-btn.jump {
+            background: #4CAF50;
+        }
+
+        .score {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            background: #0f3460;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .restart-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+
+        .restart-btn:hover {
+            background: #ff5252;
+        }
+
+        .instructions {
+            color: #888;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 10px;
+            }
+            
+            .control-btn {
+                padding: 15px 20px;
+                font-size: 20px;
+                min-width: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="controls">
+            <div class="score">
+                Score: <span id="score">0</span>
+            </div>
+            
+            <div class="mobile-controls">
+                <button class="control-btn" id="leftBtn">←</button>
+                <button class="control-btn jump" id="jumpBtn">↑</button>
+                <button class="control-btn" id="rightBtn">→</button>
+            </div>
+            
+            <button class="restart-btn" id="restartBtn">Restart</button>
+        </div>
+        
+        <div class="instructions">
+            PC: Use Arrow Keys | Mobile: Use Buttons
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+
+        // Set canvas size
+        canvas.width = 800;
+        canvas.height = 400;
+
+        // Game variables
+        let score = 0;
+        let gameRunning = true;
+
+        // Player object
+        const player = {
+            x: 100,
+            y: 300,
+            width: 30,
+            height: 30,
+            velocityY: 0,
+            velocityX: 0,
+            speed: 5,
+            jumpPower: -12,
+            grounded: false,
+            color: '#e94560'
+        };
+
+        // Gravity
+        const gravity = 0.8;
+
+        // Platforms
+        const platforms = [
+            { x: 0, y: 350, width: 200, height: 20, color: '#4CAF50' },        // Ground left
+            { x: 250, y: 350, width: 550, height: 20, color: '#4CAF50' },      // Ground right
+            { x: 150, y: 280, width: 100, height: 15, color: '#FFA500' },      // Platform 1
+            { x: 400, y: 250, width: 100, height: 15, color: '#FFA500' },      // Platform 2
+            { x: 600, y: 200, width: 100, height: 15, color: '#FFA500' },      // Platform 3
+            { x: 300, y: 150, width: 80, height: 15, color: '#FFD700' },       // Platform 4
+            { x: 500, y: 100, width: 80, height: 15, color: '#FFD700' },       // Platform 5
+        ];
+
+        // Collectibles
+        let collectibles = [
+            { x: 200, y: 320, width: 15, height: 15, collected: false, color: '#FFD700' },
+            { x: 450, y: 220, width: 15, height: 15, collected: false, color: '#FFD700' },
+            { x: 650, y: 170, width: 15, height: 15, collected: false, color: '#FFD700' },
+            { x: 330, y: 120, width: 15, height: 15, collected: false, color: '#FFD700' },
+            { x: 530, y: 70, width: 15, height: 15, collected: false, color: '#FFD700' },
+        ];
+
+        // Input handling
+        const keys = {};
+        let moveLeft = false;
+        let moveRight = false;
+        let jumpPressed = false;
+
+        // Keyboard controls
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'Left') {
+                e.preventDefault();
+                moveLeft = true;
+            } else if (e.key === 'ArrowRight' || e.key === 'Right') {
+                e.preventDefault();
+                moveRight = true;
+            } else if (e.key === 'ArrowUp' || e.key === 'Up' || e.key === ' ') {
+                e.preventDefault();
+                jumpPressed = true;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'Left') {
+                e.preventDefault();
+                moveLeft = false;
+            } else if (e.key === 'ArrowRight' || e.key === 'Right') {
+                e.preventDefault();
+                moveRight = false;
+            } else if (e.key === 'ArrowUp' || e.key === 'Up' || e.key === ' ') {
+                e.preventDefault();
+                jumpPressed = false;
+            }
+        });
+
+        // Mobile controls
+        document.getElementById('leftBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            moveLeft = true;
+        });
+
+        document.getElementById('leftBtn').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            moveLeft = false;
+        });
+
+        document.getElementById('rightBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            moveRight = true;
+        });
+
+        document.getElementById('rightBtn').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            moveRight = false;
+        });
+
+        document.getElementById('jumpBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            jumpPressed = true;
+        });
+
+        document.getElementById('jumpBtn').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            jumpPressed = false;
+        });
+
+        // Mouse controls for PC testing
+        document.getElementById('leftBtn').addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            moveLeft = true;
+        });
+
+        document.getElementById('leftBtn').addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            moveLeft = false;
+        });
+
+        document.getElementById('rightBtn').addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            moveRight = true;
+        });
+
+        document.getElementById('rightBtn').addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            moveRight = false;
+        });
+
+        document.getElementById('jumpBtn').addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            jumpPressed = true;
+        });
+
+        document.getElementById('jumpBtn').addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            jumpPressed = false;
+        });
+
+        // Prevent scrolling on arrow keys
+        window.addEventListener('keydown', (e) => {
+            if (e.key.startsWith('Arrow')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Collision detection function
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        // Update game state
+        function update() {
+            if (!gameRunning) return;
+
+            // Horizontal movement
+            if (moveLeft) {
+                player.velocityX = -player.speed;
+            } else if (moveRight) {
+                player.velocityX = player.speed;
+            } else {
+                player.velocityX *= 0.7; // Friction
+            }
+
+            // Apply horizontal movement
+            player.x += player.velocityX;
+
+            // Keep player in bounds
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+            // Apply gravity
+            player.velocityY += gravity;
+            player.y += player.velocityY;
+
+            // Platform collision
+            player.grounded = false;
+            for (let platform of platforms) {
+                if (checkCollision(player, platform)) {
+                    // Top collision
+                    if (player.velocityY > 0 && player.y + player.height > platform.y && 
+                        player.y < platform.y) {
+                        player.y = platform.y - player.height;
+                        player.velocityY = 0;
+                        player.grounded = true;
+                    }
+                    // Bottom collision
+                    else if (player.velocityY < 0) {
+                        player.y = platform.y + platform.height;
+                        player.velocityY = 0;
+                    }
+                }
+            }
+
+            // Jump
+            if (jumpPressed && player.grounded) {
+                player.velocityY = player.jumpPower;
+                player.grounded = false;
+            }
+
+            // Check ground collision with bottom of canvas
+            if (player.y + player.height > canvas.height) {
+                player.y = canvas.height - player.height;
+                player.velocityY = 0;
+                player.grounded = true;
+            }
+
+            // Collect items
+            for (let i = 0; i < collectibles.length; i++) {
+                if (!collectibles[i].collected && checkCollision(player, collectibles[i])) {
+                    collectibles[i].collected = true;
+                    score += 10;
+                    scoreElement.textContent = score;
+                }
+            }
+
+            // Check win condition
+            const allCollected = collectibles.every(c => c.collected);
+            if (allCollected) {
+                gameRunning = false;
+                setTimeout(() => {
+                    alert('Congratulations! You collected all items!');
+                }, 100);
+            }
+        }
+
+        // Draw everything
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw platforms
+            for (let platform of platforms) {
+                ctx.fillStyle = platform.color;
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // Add some texture
+                ctx.strokeStyle = '#ffffff33';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            }
+
+            // Draw collectibles
+            for (let item of collectibles) {
+                if (!item.collected) {
+                    ctx.fillStyle = item.color;
+                    ctx.beginPath();
+                    ctx.arc(item.x + item.width/2, item.y + item.height/2, item.width/1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Add sparkle effect
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(item.x + item.width/2 - 2, item.y + item.height/2 - 2, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Draw player
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // Draw player's face
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(player.x + 8, player.y + 8, 4, 4);
+            ctx.fillRect(player.x + 18, player.y + 8, 4, 4);
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(player.x + 12, player.y + 18, 6, 4);
+        }
+
+        // Restart game
+        function restartGame() {
+            player.x = 100;
+            player.y = 300;
+            player.velocityX = 0;
+            player.velocityY = 0;
+            
+            for (let item of collectibles) {
+                item.collected = false;
+            }
+            
+            score = 0;
+            scoreElement.textContent = score;
+            gameRunning = true;
+        }
+
+        document.getElementById('restartBtn').addEventListener('click', restartGame);
+
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game loop
+        gameLoop();
+
+        // Prevent context menu on canvas
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Handle window resize
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth;
+            const scale = Math.min(1, containerWidth / canvas.width);
+            canvas.style.width = canvas.width * scale + 'px';
+            canvas.style.height = canvas.height * scale + 'px';
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+    </script>
+</body>
+<script src="/return-button.js?v=1"></script>
+</html>

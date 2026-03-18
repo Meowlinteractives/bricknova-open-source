@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Stickman Obby: Prestige Loop</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #00cec9; font-family: 'Arial Black', sans-serif; touch-action: none; user-select: none; }
+        #ui { position: absolute; top: 20px; width: 100%; text-align: center; color: white; text-shadow: 3px 3px 0px #000; pointer-events: none; z-index: 10; }
+        #rebirth-ui { position: absolute; top: 60px; width: 100%; text-align: center; color: #f1c40f; font-size: 1rem; text-shadow: 2px 2px 0px #000; }
+        #joy-bound { position: absolute; bottom: 50px; left: 40px; width: 130px; height: 130px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 3px solid rgba(255,255,255,0.3); z-index: 20; }
+        #joy-stick { position: absolute; top: 50%; left: 50%; width: 60px; height: 60px; background: #fff; border-radius: 50%; transform: translate(-50%, -50%); }
+        #jump-btn { position: absolute; bottom: 60px; right: 40px; width: 115px; height: 115px; background: #ff7675; border: 5px solid white; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.3rem; z-index: 20; box-shadow: 0 8px 0px #d63031; cursor: pointer; }
+        #flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 100; transition: opacity 0.3s; }
+        /* Hide mobile UI on PC if you want, but keeping it for compatibility */
+        @media (pointer: fine) {
+            #joy-bound, #jump-btn { opacity: 0.5; } 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="flash"></div>
+    <div id="ui">
+        <div id="stage-info" style="font-size: 2.2rem;">STAGE 1</div>
+        <div id="rebirth-ui">REBIRTHS: 0</div>
+    </div>
+
+    <div id="joy-bound"><div id="joy-stick"></div></div>
+    <div id="jump-btn">JUMP (SPACE)</div>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x00cec9);
+        scene.fog = new THREE.Fog(0x00cec9, 50, 500);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 4000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+        const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+        sun.position.set(100, 400, 100);
+        scene.add(sun);
+
+        // --- STICKMAN ---
+        const player = new THREE.Group();
+        const mat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        const addPart = (g, y, x=0) => { 
+            const m = new THREE.Mesh(g, mat); 
+            m.position.set(x, y, 0); player.add(m); return m; 
+        };
+        const head = addPart(new THREE.SphereGeometry(0.4, 12, 12), 1.6);
+        const torso = addPart(new THREE.CylinderGeometry(0.08, 0.08, 0.8), 1.1);
+        const legL = addPart(new THREE.CylinderGeometry(0.06, 0.06, 0.8), 0.6, -0.15);
+        const legR = addPart(new THREE.CylinderGeometry(0.06, 0.06, 0.8), 0.6, 0.15);
+        player.position.set(0, 5, 0);
+        scene.add(player);
+
+        // --- WORLD GEN ---
+        const platforms = [];
+        const lava = [];
+        let checkpoint = new THREE.Vector3(0, 5, 0);
+        let curStage = 1;
+        let rebirths = 0;
+        const totalStages = 150;
+
+        function build(w, h, d, x, y, z, col, isLava=false, sNum=0) {
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), 
+                new THREE.MeshStandardMaterial({ color: col, emissive: isLava?col:0, emissiveIntensity: isLava?0.8:0 }));
+            mesh.position.set(x, y, z);
+            mesh.userData = { top: y+h/2, stage: sNum, bounds: { xMin: x-w/2, xMax: x+w/2, zMin: z-d/2, zMax: z+d/2 } };
+            scene.add(mesh);
+            if(isLava) lava.push(mesh); else platforms.push(mesh);
+            return mesh;
+        }
+
+        let px = 0, py = 0, pz = 0;
+        for (let i = 1; i <= totalStages; i++) {
+            let col = new THREE.Color().setHSL((200 + i*3)/360, 0.7, 0.5);
+            build(22, 2, 22, px, py, pz, col, false, i); 
+
+            if (i < totalStages) {
+                let layout = i % 4;
+                if (layout === 0) { build(15, 1, 5, px, py + 1.2, pz - 15, 0xff0000, true); pz -= 35; }
+                else if (layout === 1) { 
+                    for(let s=1; s<=3; s++) build(12, 1.5, 12, px+(s*8), py+(s*3.5), pz-(s*8), col);
+                    px += 24; py += 10.5; pz -= 24;
+                }
+                else if (layout === 2) { build(5, 1.2, 40, px, py+0.5, pz-20, 0x222222); pz -= 55; }
+                else { px -= 25; pz -= 20; py += 3; }
+                pz -= 20;
+            }
+        }
+        const winPad = build(100, 3, 100, px, py, pz - 50, 0xf1c40f, false, 999);
+
+        // --- INPUTS (PC + MOBILE) ---
+        const input = { x: 0, z: 0 };
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+        let jumpCount = 0, vY = 0, walk = 0;
+        let camY = 0, camX = -0.25;
+        let joyId = null, lookId = null, lastLX = 0, lastLY = 0;
+
+        // PC Keyboard Listeners
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
+            if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+            if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
+            if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                performJump();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
+            if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+            if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
+            if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
+        });
+
+        function performJump() {
+            if (jumpCount < 2) { 
+                vY = 0.55; jumpCount++; 
+                player.scale.set(0.8, 1.4, 0.8); 
+            }
+        }
+
+        // Mobile Controls (Joystick)
+        const jBound = document.getElementById('joy-bound'), jStick = document.getElementById('joy-stick');
+        jBound.onpointerdown = (e) => { joyId = e.pointerId; jBound.setPointerCapture(e.pointerId); };
+        jBound.onpointermove = (e) => {
+            if (e.pointerId !== joyId) return;
+            const r = jBound.getBoundingClientRect(), dx = e.clientX - (r.left + r.width/2), dy = e.clientY - (r.top + r.height/2);
+            const d = Math.min(Math.sqrt(dx*dx + dy*dy), 55), a = Math.atan2(dy, dx);
+            jStick.style.transform = `translate(calc(-50% + ${Math.cos(a)*d}px), calc(-50% + ${Math.sin(a)*d}px))`;
+            input.x = (Math.cos(a)*d)/55; input.z = (Math.sin(a)*d)/55;
+        };
+        jBound.onpointerup = () => { joyId = null; input.x = input.z = 0; jStick.style.transform = `translate(-50%, -50%)`; };
+
+        // Camera Pan (Click & Drag or Touch & Drag)
+        window.onpointerdown = (e) => { if (e.clientX > window.innerWidth/2 && e.target.id !== 'jump-btn') { lookId = e.pointerId; lastLX = e.clientX; lastLY = e.clientY; }};
+        window.onpointermove = (e) => { if (e.pointerId === lookId) { camY -= (e.clientX - lastLX) * 0.008; camX = THREE.MathUtils.clamp(camX - (e.clientY - lastLY) * 0.008, -1.2, 0.6); lastLX = e.clientX; lastLY = e.clientY; }};
+        window.onpointerup = () => lookId = null;
+
+        document.getElementById('jump-btn').onpointerdown = (e) => { e.preventDefault(); performJump(); };
+
+        // --- PHYSICS ENGINE ---
+        function update() {
+            // Combine PC Keyboard + Mobile Joystick
+            let moveX = input.x;
+            let moveZ = input.z;
+
+            if (keys.w) moveZ = -1;
+            if (keys.s) moveZ = 1;
+            if (keys.a) moveX = -1;
+            if (keys.d) moveX = 1;
+
+            const fwd = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0,1,0), camY);
+            const rit = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0,1,0), camY);
+            
+            // Normalize movement speed
+            if (Math.abs(moveX) > 0.1 || Math.abs(moveZ) > 0.1) {
+                player.position.addScaledVector(fwd, -moveZ * 0.42).addScaledVector(rit, moveX * 0.42);
+                player.rotation.y = THREE.MathUtils.lerp(player.rotation.y, Math.atan2(moveX, -moveZ) + camY, 0.2);
+                walk += 0.45;
+                legL.rotation.x = Math.sin(walk) * 0.9; legR.rotation.x = Math.sin(walk + Math.PI) * 0.9;
+            } else {
+                legL.rotation.x = legR.rotation.x = 0;
+            }
+
+            player.scale.lerp(new THREE.Vector3(1, 1, 1), 0.15);
+
+            vY -= 0.02; // Gravity
+            player.position.y += vY;
+
+            const px = player.position.x, py = player.position.y, pz = player.position.z;
+
+            // SOLID COLLISION CHECK
+            let grounded = false;
+            const nearby = platforms.filter(p => Math.abs(p.position.z - pz) < 60);
+
+            for (let p of nearby) {
+                const b = p.userData.bounds;
+                if (px > b.xMin && px < b.xMax && pz > b.zMin && pz < b.zMax) {
+                    if (vY <= 0 && py >= p.userData.top - 1.0 && py <= p.userData.top + 0.5) {
+                        if (p.userData.stage === 999) triggerRebirth();
+                        
+                        player.position.y = p.userData.top;
+                        if (vY < -0.1) player.scale.set(1.4, 0.6, 1.4); 
+                        vY = 0; jumpCount = 0; grounded = true;
+
+                        if (p.userData.stage > 0 && p.userData.stage <= totalStages) {
+                            if (p.userData.stage > curStage) {
+                                curStage = p.userData.stage;
+                                document.getElementById('stage-info').innerText = `STAGE ${curStage}`;
+                                checkpoint.copy(player.position);
+                                updateEnvironment(curStage);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Lava
+            for (let l of lava) {
+                if (Math.abs(l.position.z - pz) > 40) continue;
+                const b = l.userData.bounds;
+                if (px > b.xMin && px < b.xMax && pz > b.zMin && pz < b.zMax && py < l.userData.top + 0.5 && py > l.userData.top - 1.5) {
+                    respawn();
+                }
+            }
+
+            if (player.position.y < -60) respawn();
+
+            // Cam Follow
+            const camOffset = new THREE.Vector3(0, 0, 22).applyAxisAngle(new THREE.Vector3(1,0,0), camX).applyAxisAngle(new THREE.Vector3(0,1,0), camY);
+            camera.position.lerp(player.position.clone().add(camOffset), 0.12);
+            camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(update);
+        }
+
+        function respawn() {
+            player.position.copy(checkpoint);
+            vY = 0; jumpCount = 0;
+        }
+
+        function triggerRebirth() {
+            rebirths++;
+            document.getElementById('rebirth-ui').innerText = `REBIRTHS: ${rebirths}`;
+            document.getElementById('flash').style.opacity = "1";
+            setTimeout(() => {
+                document.getElementById('flash').style.opacity = "0";
+                curStage = 1;
+                document.getElementById('stage-info').innerText = `STAGE 1`;
+                checkpoint.set(0, 5, 0);
+                respawn();
+                updateEnvironment(1);
+            }, 300);
+        }
+
+        function updateEnvironment(stage) {
+            let hue = (200 + stage * 2) % 360;
+            scene.background.setHSL(hue/360, 0.6, 0.6);
+            scene.fog.color.copy(scene.background);
+        }
+
+        update();
+        window.onresize = () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+    </script>
+</body>
+<script src="/games.js"></script>
+<script src="/game-lock.js?v=1"></script>
+<script src="/return-button.js?v=1"></script>
+</html>

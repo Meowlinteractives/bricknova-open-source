@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <link rel="icon" href="logo.png" type="image/png">
+  <title>403 � Bricknova</title>
+  <!-- ANTI-CACHING META TAGS -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #ff8c42;
+      background-image: 
+        linear-gradient(#1e3a5f 1.8px, transparent 1.8px),
+        linear-gradient(90deg, #1e3a5f 1.8px, transparent 1.8px);
+      background-size: 30px 30px;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #ffa559;
+      border: 4px solid #1e3a5f;
+      padding: 2rem;
+      box-shadow: 12px 12px 0 #2c4c6b;
+      text-align: center;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 3px solid #1e3a5f;
+      padding-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .logo {
+      width: 60px;
+      height: 60px;
+      background-image: url('logo.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-color: #ffa559;
+      border: 3px solid #1e3a5f;
+      flex-shrink: 0;
+    }
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #0b2a4a;
+      text-transform: uppercase;
+      text-shadow: 3px 3px 0 #ffd966;
+      word-break: break-word;
+    }
+    .error-code {
+      font-size: 6rem;
+      font-weight: 900;
+      color: #1e3a5f;
+      text-shadow: 5px 5px 0 #ffd966;
+      margin: 1rem 0;
+      line-height: 1;
+    }
+    .error-message {
+      background: #ffd1a4;
+      border: 4px solid #1e3a5f;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 6px 6px 0 #2c4c6b;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #0b2a4a;
+    }
+    .lock-icon {
+      font-size: 4rem;
+      margin: 1rem 0;
+      animation: shake 0.5s ease-in-out infinite;
+    }
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(5deg); }
+      75% { transform: rotate(-5deg); }
+    }
+    .button-grid {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+    .bricknova-button {
+      background: #1e3a5f;
+      color: #ffd966;
+      border: 3px solid #ffb347;
+      font-weight: 900;
+      font-size: 1.1rem;
+      padding: 0.8rem 1.5rem;
+      text-decoration: none;
+      text-transform: uppercase;
+      box-shadow: 4px 4px 0 #2c4c6b;
+      cursor: pointer;
+      transition: all 0.1s ease;
+      display: inline-block;
+    }
+    .bricknova-button:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0 #1e3a5f;
+    }
+    .bricknova-button:active {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0 #2c4c6b;
+    }
+    .warning-text {
+      font-size: 0.9rem;
+      color: #1e3a5f;
+      margin-top: 2rem;
+      padding: 1rem;
+      border-top: 2px solid #1e3a5f;
+      opacity: 0.8;
+    }
+    .glitch-text {
+      font-size: 1rem;
+      color: #0b2a4a;
+      background: #ffd966;
+      padding: 0.5rem;
+      border: 2px solid #1e3a5f;
+      display: inline-block;
+      margin: 1rem 0;
+    }
+    .domain-warning {
+      font-size: 0.8rem;
+      color: #8b0000;
+      background: #ffd1a4;
+      padding: 0.3rem 0.8rem;
+      border: 2px solid #1e3a5f;
+      display: inline-block;
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 1.5rem;
+      }
+      .error-code {
+        font-size: 4rem;
+      }
+      h1 {
+        font-size: 1.8rem;
+      }
+      .logo {
+        width: 50px;
+        height: 50px;
+      }
+      .lock-icon {
+        font-size: 3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo"></div>
+      <h1>BRICKNOVA</h1>
+    </div>
+
+    <div class="lock-icon">%uD83D%uDD12</div>
+    
+    <div class="error-code">403</div>
+    
+    <div class="error-message">
+      %u26A1 ACCESS DENIED %u26A1
+    </div>
+
+    <div class="glitch-text">
+      YOU SHALL NOT PASS! (%u256F�%u25A1�)%u256F
+    </div>
+
+    <p style="color: #1e3a5f; font-weight: 700; margin: 1rem 0;">
+      This area is restricted. This has been logged.
+    </p>
+
+    <div id="domainDisplay" class="domain-warning"></div>
+
+    <div class="button-grid">
+      <a href="/" class="bricknova-button">%u2B05 GO HOME</a>
+      <a href="javascript:history.back()" class="bricknova-button">%u21A9 GO BACK</a>
+    </div>
+
+    <div class="warning-text">
+      <p>%u26A0%uFE0F UNAUTHORIZED ACCESS PROHIBITED %u26A0%uFE0F</p>
+      <p style="margin-top: 0.5rem; font-size: 0.8rem;">
+        If you believe this is an error, contact us on Discord
+      </p>
+    </div>
+  </div>
+
+  <!-- DOMAIN LOCKING SCRIPT - Only works on bricknova.neocities.org -->
+  <script>
+    (function() {
+      // Anti-inspect
+      document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+      });
+
+      document.addEventListener('keydown', function(e) {
+        `;
+      }
+
+      // If someone tries to view this page on wrong domain, show different message
+      if (currentHost.toLowerCase() !== allowedDomain.toLowerCase()) {
+        // Completely wipe the page and show simple 404
+        document.documentElement.innerHTML = '';
+        document.title = '404';
+        document.write('404 - wrong file or directory');
+        document.write('<br><small>Domain: ' + currentHost + '</small>');
+        throw new Error('404 - wrong file or directory');
+      }
+
+      // Console message for curious people (only shows on correct domain)
+      console.log('%c%uD83D%uDD12 403 - Access Denied %uD83D%uDD12', 'font-size: 16px; color: #ff8c42; background: #1e3a5f; padding: 5px;');
+      console.log('%cNice try, but this area is locked down!', 'color: #ff8c42;');
+      console.log('%cYour attempt has been logged.', 'color: #ff8c42; font-size: 10px;');
+    })();
+  </script>
+</body>
+</html>

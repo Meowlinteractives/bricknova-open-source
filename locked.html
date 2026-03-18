@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <link rel="icon" href="logo.png" type="image/png">
+  <title>Game Locked · Bricknova</title>
+  <!-- ANTI-CACHING META TAGS -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    body {
+      background: #ff8c42;
+      background-image: 
+        linear-gradient(#1e3a5f 1.8px, transparent 1.8px),
+        linear-gradient(90deg, #1e3a5f 1.8px, transparent 1.8px);
+      background-size: 30px 30px;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      background: #ffa559;
+      border: 4px solid #1e3a5f;
+      padding: 2rem;
+      box-shadow: 12px 12px 0 #2c4c6b;
+      text-align: center;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 3px solid #1e3a5f;
+      padding-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .logo {
+      width: 60px;
+      height: 60px;
+      background-image: url('logo.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-color: #ffa559;
+      border: 3px solid #1e3a5f;
+      flex-shrink: 0;
+    }
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #0b2a4a;
+      text-transform: uppercase;
+      text-shadow: 3px 3px 0 #ffd966;
+      word-break: break-word;
+    }
+    
+    /* LOCKED PAGE SPECIFIC STYLES */
+    .lock-icon {
+      font-size: 5rem;
+      margin: 1rem 0;
+      animation: shake 0.8s ease-in-out infinite;
+      display: inline-block;
+      filter: drop-shadow(4px 4px 0 #1e3a5f);
+    }
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(10deg); }
+      75% { transform: rotate(-10deg); }
+    }
+    
+    .lock-stamp {
+      background: #8b0000;
+      color: #ffd966;
+      font-size: 2.5rem;
+      font-weight: 900;
+      padding: 0.5rem 2rem;
+      border: 4px solid #1e3a5f;
+      transform: rotate(-3deg);
+      display: inline-block;
+      margin: 1rem 0;
+      box-shadow: 6px 6px 0 #2c4c6b;
+      text-shadow: 2px 2px 0 #1e3a5f;
+      letter-spacing: 4px;
+    }
+    
+    .lock-code {
+      background: #1e3a5f;
+      color: #ffd966;
+      font-size: 1.5rem;
+      font-weight: 900;
+      padding: 0.5rem 1.5rem;
+      border: 3px solid #ffb347;
+      display: inline-block;
+      margin-bottom: 1.5rem;
+      box-shadow: 4px 4px 0 #2c4c6b;
+    }
+    
+    .message-box {
+      background: #ffd1a4;
+      border: 4px solid #1e3a5f;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 6px 6px 0 #2c4c6b;
+    }
+    
+    .message-title {
+      font-size: 2rem;
+      font-weight: 900;
+      color: #8b0000;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      text-shadow: 2px 2px 0 #ffd966;
+    }
+    
+    .message-text {
+      font-size: 1.2rem;
+      color: #1e3a5f;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    
+    .locker-info {
+      background: #1e3a5f;
+      color: #ffd966;
+      padding: 0.5rem 1rem;
+      border: 2px solid #ffb347;
+      display: inline-block;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+    
+    .reason-box {
+      background: #ffe5cc;
+      border: 3px solid #1e3a5f;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      text-align: left;
+    }
+    
+    .reason-title {
+      font-weight: 900;
+      color: #0b2a4a;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .reason-text {
+      color: #1e3a5f;
+      font-size: 1.2rem;
+      padding: 1rem;
+      background: white;
+      border: 2px solid #1e3a5f;
+      word-break: break-word;
+      font-weight: 700;
+    }
+    
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+    
+    .info-card {
+      background: #ffb347;
+      border: 3px solid #1e3a5f;
+      padding: 1rem;
+      box-shadow: 3px 3px 0 #2c4c6b;
+    }
+    
+    .info-card span {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    
+    .info-card p {
+      font-weight: 700;
+      color: #0b2a4a;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+    }
+    
+    .info-card .info-value {
+      font-size: 1.1rem;
+      color: #1e3a5f;
+      margin-top: 0.3rem;
+      font-weight: 700;
+    }
+    
+    .action-by {
+      background: #ffd966;
+      border: 3px solid #1e3a5f;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      font-weight: 700;
+      color: #1e3a5f;
+    }
+    
+    .discord-panel {
+      background: #ffd1a4;
+      border: 4px solid #1e3a5f;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      box-shadow: 6px 6px 0 #2c4c6b;
+    }
+    
+    .discord-title {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: #0b2a4a;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    
+    .discord-text {
+      color: #1e3a5f;
+      margin-bottom: 1.5rem;
+    }
+    
+    .discord-button {
+      background: #5865F2;
+      border: 3px solid #1e3a5f;
+      color: white;
+      font-weight: 900;
+      font-size: 1.1rem;
+      padding: 0.8rem 2rem;
+      text-decoration: none;
+      text-transform: uppercase;
+      box-shadow: 4px 4px 0 #1e3a5f;
+      display: inline-block;
+      transition: all 0.1s ease;
+    }
+    
+    .discord-button:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0 #1e3a5f;
+    }
+    
+    .discord-button:active {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0 #1e3a5f;
+    }
+    
+    .button-grid {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 2rem 0 1rem;
+    }
+    
+    .bricknova-button {
+      background: #1e3a5f;
+      color: #ffd966;
+      border: 3px solid #ffb347;
+      font-weight: 900;
+      font-size: 1.1rem;
+      padding: 0.8rem 1.5rem;
+      text-decoration: none;
+      text-transform: uppercase;
+      box-shadow: 4px 4px 0 #2c4c6b;
+      cursor: pointer;
+      transition: all 0.1s ease;
+      display: inline-block;
+    }
+    
+    .bricknova-button:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0 #1e3a5f;
+    }
+    
+    .bricknova-button:active {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0 #2c4c6b;
+    }
+    
+    .game-suggestion {
+      background: #1e3a5f;
+      color: #ffd966;
+      padding: 1rem;
+      border: 3px solid #ffb347;
+      margin-top: 1.5rem;
+      font-weight: 700;
+    }
+    
+    .footer {
+      margin-top: 2rem;
+      border-top: 3px solid #1e3a5f;
+      padding-top: 1rem;
+      font-size: 0.8rem;
+      color: #1e3a5f;
+    }
+    
+    /* Mobile adjustments */
+    @media (max-width: 600px) {
+      .container {
+        padding: 1.2rem;
+        box-shadow: 8px 8px 0 #2c4c6b;
+      }
+      
+      h1 {
+        font-size: 1.8rem;
+      }
+      
+      .logo {
+        width: 50px;
+        height: 50px;
+      }
+      
+      .lock-icon {
+        font-size: 4rem;
+      }
+      
+      .lock-stamp {
+        font-size: 1.8rem;
+        padding: 0.4rem 1.5rem;
+      }
+      
+      .lock-code {
+        font-size: 1.2rem;
+      }
+      
+      .message-title {
+        font-size: 1.6rem;
+      }
+      
+      .message-text {
+        font-size: 1rem;
+      }
+      
+      .info-grid {
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
+      }
+      
+      .discord-button {
+        width: 100%;
+        text-align: center;
+      }
+      
+      .bricknova-button {
+        width: 100%;
+        text-align: center;
+      }
+      
+      .reason-box {
+        padding: 1rem;
+      }
+      
+      .reason-text {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo"></div>
+      <h1>BRICKNOVA</h1>
+    </div>
+
+    <div class="lock-icon">🔒</div>
+    
+    <div class="lock-stamp">
+      LOCKED
+    </div>
+    
+    <div class="lock-code">
+      ⚡ GAME UNAVAILABLE ⚡
+    </div>
+
+    <div class="message-box">
+      <div class="message-title">
+        THIS GAME IS LOCKED
+      </div>
+      <div class="message-text">
+        This game has been locked by its owner or an administrator.
+      </div>
+    </div>
+
+    <div id="lockerInfo" class="locker-info">
+      🔒 Locked by: Administrator
+    </div>
+
+    <div class="reason-box">
+      <div class="reason-title">
+        <span>🔒</span> REASON FOR LOCKING:
+      </div>
+      <div class="reason-text" id="lockReason">
+        Game is under maintenance
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <span>📅</span>
+        <p>Locked Since</p>
+        <div class="info-value" id="lockDate">2026-02-15</div>
+      </div>
+      <div class="info-card">
+        <span>👤</span>
+        <p>Locked By</p>
+        <div class="info-value" id="lockedBy">Admin</div>
+      </div>
+      <div class="info-card">
+        <span>🔢</span>
+        <p>Reference</p>
+        <div class="info-value" id="lockRef">LOCK-123456</div>
+      </div>
+    </div>
+
+    <div class="discord-panel">
+      <div class="discord-title">🕊️ QUESTIONS?</div>
+      <div class="discord-text">
+        If you're the owner and want to unlock your game, or if you have questions about why this game is locked, join our Discord.
+      </div>
+      <a href="https://discord.gg/JpmBDy9p7K" class="discord-button" target="_blank">⚡ ASK ON DISCORD</a>
+    </div>
+
+    <div class="game-suggestion">
+      🎮 Check out other games while this one is locked!
+    </div>
+
+    <div class="button-grid">
+      <a href="/" class="bricknova-button">⬅ BROWSE GAMES</a>
+      <a href="javascript:history.back()" class="bricknova-button">↩ GO BACK</a>
+    </div>
+
+    <div class="footer">
+      © 2026 BRICKNOVA · GAME LOCK NOTIFICATION
+    </div>
+  </div>
+
+  <!-- DOMAIN LOCKING AND LOCK LOGIC -->
+  <script>
+    (function() {
+      // Anti-inspect
+      document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+      });
+
+      document.addEventListener('keydown', function(e) {
+        
+
+      // Get URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const reason = urlParams.get('reason') || 'Game is under maintenance';
+      const ref = urlParams.get('ref') || 'LOCK-' + new Date().getTime().toString().slice(-6);
+      const lockedBy = urlParams.get('by') || 'Administrator';
+      const dateParam = urlParams.get('date');
+      
+      // Update lock reason
+      const lockReason = document.getElementById('lockReason');
+      if (lockReason) {
+        lockReason.textContent = decodeURIComponent(reason);
+      }
+      
+      // Update reference
+      const lockRef = document.getElementById('lockRef');
+      if (lockRef) {
+        lockRef.textContent = ref;
+      }
+      
+      // Update locked by
+      const lockedByEl = document.getElementById('lockedBy');
+      if (lockedByEl) {
+        lockedByEl.textContent = lockedBy;
+      }
+      
+      // Update locker info
+      const lockerInfo = document.getElementById('lockerInfo');
+      if (lockerInfo) {
+        lockerInfo.innerHTML = `🔒 Locked by: ${lockedBy}`;
+      }
+      
+      // Set lock date
+      const lockDate = document.getElementById('lockDate');
+      if (lockDate) {
+        if (dateParam) {
+          lockDate.textContent = dateParam;
+        } else {
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          lockDate.textContent = `${year}-${month}-${day}`;
+        }
+      }
+
+      // Console message
+      console.log('%c🔒 GAME LOCKED 🔒', 'font-size: 20px; color: #8b0000; background: #1e3a5f; padding: 10px;');
+      console.log('%cThis game was locked by: ' + lockedBy, 'color: #ff8c42; font-size: 14px;');
+      console.log('%cReason: ' + decodeURIComponent(reason), 'color: #ff8c42;');
+      console.log('%cRef: ' + ref, 'color: #ff8c42;');
+    })();
+  </script>
+</body>
+</html>

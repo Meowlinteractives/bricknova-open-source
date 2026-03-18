@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realistic Grass Render | Three.js</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; }
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 15px;
+            border-radius: 30px;
+            pointer-events: none;
+            backdrop-filter: blur(5px);
+            font-size: 14px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">🌿 Realistic Grass | Three.js | Drag to view</div>
+
+    <!-- Import Three.js core and add-ons -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- Initialize Scene, Camera, Renderers ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xaaccff); // Sky blue
+        // Slight fog for depth
+        scene.fog = new THREE.Fog(0xaaccff, 20, 60);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(15, 8, 20);
+        camera.lookAt(5, 2, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true; // Enable shadows for realism
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadows
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2.2; // Limit below horizon
+        controls.target.set(5, 2, 0);
+        controls.maxDistance = 40;
+
+        // --- Lighting ---
+        // Ambient light (fill)
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+
+        // Sun light (directional) - casts shadows
+        const sunLight = new THREE.DirectionalLight(0xfff5d1, 1.2);
+        sunLight.position.set(10, 25, 5);
+        sunLight.castShadow = true;
+        sunLight.receiveShadow = true;
+        
+        // Shadow settings for better quality
+        sunLight.shadow.mapSize.width = 1024;
+        sunLight.shadow.mapSize.height = 1024;
+        const d = 25;
+        sunLight.shadow.camera.left = -d;
+        sunLight.shadow.camera.right = d;
+        sunLight.shadow.camera.top = d;
+        sunLight.shadow.camera.bottom = -d;
+        sunLight.shadow.camera.near = 1;
+        sunLight.shadow.camera.far = 50;
+        sunLight.shadow.bias = -0.0005;
+        scene.add(sunLight);
+
+        // Fill light from opposite side
+        const fillLight = new THREE.DirectionalLight(0xccddff, 0.4);
+        fillLight.position.set(-10, 5, -10);
+        scene.add(fillLight);
+
+        // Soft back light
+        const backLight = new THREE.DirectionalLight(0xffeedd, 0.3);
+        backLight.position.set(0, 5, -15);
+        scene.add(backLight);
+
+        // Small point light to add subtle warmth
+        const pointLight = new THREE.PointLight(0xffaa55, 0.5, 20);
+        pointLight.position.set(2, 3, 5);
+        scene.add(pointLight);
+
+        // --- Ground Plane (receives shadows, subtle texture) ---
+        const groundGeometry = new THREE.CircleGeometry(30, 64);
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0x3c5e3a,
+            roughness: 0.8,
+            metalness: 0.1,
+            emissive: 0x000000
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.05; // Slightly below grass roots
+        ground.receiveShadow = true;
+        ground.castShadow = false;
+        scene.add(ground);
+
+        // Add a subtle ground pattern (random tiny bumps? but keep simple, maybe a slightly varied color underneath)
+        const groundPatchGeometry = new THREE.CircleGeometry(30, 64);
+        const groundPatchMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2a4a2a,
+            roughness: 0.9,
+            transparent: true,
+            opacity: 0.3
+        });
+        const groundPatch = new THREE.Mesh(groundPatchGeometry, groundPatchMaterial);
+        groundPatch.rotation.x = -Math.PI / 2;
+        groundPatch.position.y = -0.04;
+        scene.add(groundPatch);
+
+        // --- Background elements: distant trees/hills (simple silhouettes) ---
+        function createDistantTree(x, z, scale) {
+            const group = new THREE.Group();
+            
+            // Trunk
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3c31, emissive: 0x111111 });
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.8 * scale, 1.2 * scale, 3 * scale), trunkMat);
+            trunk.position.y = 1.5 * scale;
+            trunk.castShadow = true;
+            trunk.receiveShadow = true;
+            group.add(trunk);
+            
+            // Foliage (multiple spheres)
+            const foliageMat = new THREE.MeshStandardMaterial({ color: 0x2a5a2a, emissive: 0x112211 });
+            const foliage1 = new THREE.Mesh(new THREE.SphereGeometry(1.2 * scale, 7), foliageMat);
+            foliage1.position.set(0, 3 * scale, 0.5 * scale);
+            foliage1.castShadow = true;
+            foliage1.receiveShadow = true;
+            group.add(foliage1);
+            
+            const foliage2 = new THREE.Mesh(new THREE.SphereGeometry(1.0 * scale, 7), foliageMat);
+            foliage2.position.set(0.8 * scale, 2.5 * scale, -0.3 * scale);
+            foliage2.castShadow = true;
+            foliage2.receiveShadow = true;
+            group.add(foliage2);
+            
+            const foliage3 = new THREE.Mesh(new THREE.SphereGeometry(0.9 * scale, 7), foliageMat);
+            foliage3.position.set(-0.7 * scale, 2.8 * scale, 0.2 * scale);
+            foliage3.castShadow = true;
+            foliage3.receiveShadow = true;
+            group.add(foliage3);
+            
+            group.position.set(x, 0, z);
+            return group;
+        }
+
+        // Place some distant trees
+        scene.add(createDistantTree(-8, -12, 1.2));
+        scene.add(createDistantTree(15, -10, 1.5));
+        scene.add(createDistantTree(20, 5, 1.0));
+        scene.add(createDistantTree(-5, 18, 1.3));
+        scene.add(createDistantTree(-15, 8, 1.1));
+
+        // --- Grass Blade Generation ---
+        // We'll create many individual blades as thin boxes, each with a slight random bend.
+        // For performance and realism, we use instanced mesh for the main geometry,
+        // but also add some variation with a few hand-placed clumps.
+
+        // Create a single blade geometry: a thin tapered box
+        function createBladeGeometry() {
+            // We'll use a custom geometry: a thin trapezoid shape
+            const geometry = new THREE.BufferGeometry();
+            
+            // Define vertices for a blade with slight taper and bend
+            // Using a simple flat blade with 8 vertices (two faces)
+            // Coordinates: width (x), height (y), depth (z)
+            const w = 0.06; // base width
+            const wTip = 0.02; // tip width
+            const h = 0.8; // height
+            const d = 0.02; // depth thin
+            
+            // We'll create a blade pointing up, with a slight forward lean at tip
+            // Vertices: 
+            // 0: base left front
+            // 1: base right front
+            // 2: base left back
+            // 3: base right back
+            // 4: tip left front (higher, slightly forward)
+            // 5: tip right front
+            // 6: tip left back
+            // 7: tip right back
+            
+            const vertices = new Float32Array([
+                // Base
+                -w/2, 0,  d/2,  // 0
+                 w/2, 0,  d/2,  // 1
+                -w/2, 0, -d/2,  // 2
+                 w/2, 0, -d/2,  // 3
+                // Tip (bent forward a bit)
+                -wTip/2, h,  d/2 + 0.1, // 4
+                 wTip/2, h,  d/2 + 0.1, // 5
+                -wTip/2, h, -d/2 + 0.1, // 6
+                 wTip/2, h, -d/2 + 0.1  // 7
+            ]);
+            
+            // Indices for faces (two sides, each with two triangles)
+            const indices = [
+                // Front face
+                0, 1, 4,
+                1, 5, 4,
+                // Back face
+                2, 6, 3,
+                3, 6, 7,
+                // Left face
+                0, 4, 2,
+                2, 4, 6,
+                // Right face
+                1, 3, 5,
+                3, 7, 5,
+                // Bottom (optional, not really needed)
+                0, 2, 1,
+                1, 2, 3
+            ];
+            
+            // Normals will be computed later or we can provide basic ones; for lighting we want them to look okay.
+            // For simplicity, we'll use computeVertexNormals after setting indices.
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            geometry.setIndex(indices);
+            geometry.computeVertexNormals();
+            
+            return geometry;
+        }
+
+        const bladeGeometry = createBladeGeometry();
+        
+        // Material for grass - with some color variation we'll handle via vertex colors or multiple materials.
+        // But for instancing, we can use a single material and adjust via per-instance color if we use advanced features.
+        // To keep it simple and effective, we'll create multiple meshes with slightly different colors grouped in clumps.
+        
+        // Function to create a clump of grass at position with random parameters
+        function createGrassClump(posX, posZ, baseColor, count = 40, radius = 1.2) {
+            const group = new THREE.Group();
+            
+            for (let i = 0; i < count; i++) {
+                // Random position within clump radius
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * radius;
+                const xOffset = Math.cos(angle) * r;
+                const zOffset = Math.sin(angle) * r;
+                
+                // Slight random rotation
+                const rotY = Math.random() * Math.PI * 2;
+                
+                // Random height scale (variation)
+                const scaleY = 0.7 + Math.random() * 0.8;
+                const scaleX = 0.8 + Math.random() * 0.5;
+                const scaleZ = 0.8 + Math.random() * 0.5;
+                
+                // Color variation
+                const colorVar = new THREE.Color(baseColor).multiplyScalar(0.8 + Math.random() * 0.5);
+                
+                // Create material with slight variation
+                const material = new THREE.MeshStandardMaterial({
+                    color: colorVar,
+                    roughness: 0.6,
+                    emissive: 0x000000,
+                    flatShading: false,
+                    side: THREE.DoubleSide // to see thin blades from both sides
+                });
+                
+                const blade = new THREE.Mesh(bladeGeometry, material);
+                
+                // Position and orient
+                blade.position.set(posX + xOffset, 0, posZ + zOffset);
+                blade.rotation.y = rotY;
+                blade.rotation.x = (Math.random() - 0.5) * 0.2; // slight lean
+                blade.rotation.z = (Math.random() - 0.5) * 0.2;
+                blade.scale.set(scaleX, scaleY, scaleZ);
+                
+                blade.castShadow = true;
+                blade.receiveShadow = true;
+                
+                group.add(blade);
+            }
+            
+            return group;
+        }
+
+        // Main field - create many clumps over an area
+        const grassColor1 = 0x5f8a4f;
+        const grassColor2 = 0x6e9e5a;
+        const grassColor3 = 0x4f7a3a;
+        
+        // Generate clumps in a grid with random offset
+        const clumpRadius = 1.8;
+        for (let i = -3; i <= 12; i+=2) {
+            for (let j = -5; j <= 8; j+=2) {
+                // Skip some areas to create natural patches
+                if (Math.random() > 0.6) continue;
+                
+                const x = i + (Math.random() - 0.5) * 1.5;
+                const z = j + (Math.random() - 0.5) * 1.5;
+                
+                // Choose color based on position
+                let col;
+                if ((i+j) % 3 === 0) col = grassColor1;
+                else if ((i+j) % 3 === 1) col = grassColor2;
+                else col = grassColor3;
+                
+                // Clump size varies
+                const size = 20 + Math.floor(Math.random() * 40);
+                const clump = createGrassClump(x, z, col, size, clumpRadius * (0.8 + Math.random()*0.7));
+                scene.add(clump);
+            }
+        }
+
+        // Add some extra sparse blades in between for density
+        for (let k = 0; k < 300; k++) {
+            const x = -2 + Math.random() * 16;
+            const z = -4 + Math.random() * 14;
+            // Avoid center maybe? but fine
+            const col = new THREE.Color(grassColor1).lerp(new THREE.Color(grassColor3), Math.random());
+            const material = new THREE.MeshStandardMaterial({ color: col, roughness: 0.6, side: THREE.DoubleSide });
+            const blade = new THREE.Mesh(bladeGeometry, material);
+            blade.position.set(x, 0, z);
+            blade.rotation.y = Math.random() * Math.PI * 2;
+            blade.rotation.x = (Math.random() - 0.5) * 0.3;
+            blade.rotation.z = (Math.random() - 0.5) * 0.3;
+            blade.scale.set(0.8 + Math.random()*0.6, 0.5 + Math.random()*1.0, 0.8 + Math.random()*0.6);
+            blade.castShadow = true;
+            blade.receiveShadow = true;
+            scene.add(blade);
+        }
+
+        // --- Add some small flowers / clover for detail (tiny spheres) ---
+        function addFlowers() {
+            const flowerMatWhite = new THREE.MeshStandardMaterial({ color: 0xfff0f0, emissive: 0x221111 });
+            const flowerMatYellow = new THREE.MeshStandardMaterial({ color: 0xffdd88, emissive: 0x221100 });
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x3a773a });
+            
+            for (let i = 0; i < 80; i++) {
+                const x = -1 + Math.random() * 14;
+                const z = -3 + Math.random() * 12;
+                
+                // Tiny stem
+                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.2), stemMat);
+                stem.position.set(x, 0.1, z);
+                stem.castShadow = true;
+                stem.receiveShadow = true;
+                scene.add(stem);
+                
+                // Flower head
+                const flower = new THREE.Mesh(new THREE.SphereGeometry(0.08, 5), Math.random() > 0.5 ? flowerMatWhite : flowerMatYellow);
+                flower.position.set(x, 0.25, z);
+                flower.castShadow = true;
+                flower.receiveShadow = true;
+                scene.add(flower);
+            }
+        }
+        addFlowers();
+
+        // --- Small rocks for realism ---
+        const rockMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.9 });
+        for (let i = 0; i < 15; i++) {
+            const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + Math.random()*0.2), rockMat);
+            rock.position.set(2 + Math.random()*8, 0.05, -1 + Math.random()*6);
+            rock.rotation.set(Math.random(), Math.random(), Math.random());
+            rock.castShadow = true;
+            rock.receiveShadow = true;
+            scene.add(rock);
+        }
+
+        // --- Atmosphere: some particles (dust/bugs) very subtle ---
+        const particleGeo = new THREE.BufferGeometry();
+        const particleCount = 200;
+        const particlePositions = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount; i++) {
+            particlePositions[i*3] = (Math.random() - 0.5) * 40;
+            particlePositions[i*3+1] = Math.random() * 10;
+            particlePositions[i*3+2] = (Math.random() - 0.5) * 40;
+        }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particleMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05, transparent: true, opacity: 0.3 });
+        const particles = new THREE.Points(particleGeo, particleMat);
+        scene.add(particles);
+
+        // --- Add a few boulders ---
+        const boulderMat = new THREE.MeshStandardMaterial({ color: 0x6b5e4a, roughness: 0.8 });
+        const boulderPositions = [ [3, 0.2, 2], [7, 0.3, -1], [10, 0.15, 4], [1, 0.1, 5] ];
+        boulderPositions.forEach(pos => {
+            const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5 + Math.random()*0.3), boulderMat);
+            boulder.position.set(pos[0], pos[1], pos[2]);
+            boulder.castShadow = true;
+            boulder.receiveShadow = true;
+            scene.add(boulder);
+        });
+
+        // --- Animation loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update(); // for damping
+            
+            // Slight rotation of particles for life
+            particles.rotation.y += 0.0002;
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+
+        // --- Handle window resize ---
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Optional: add a small sun lens flare effect? Not necessary.
+
+        console.log('Grass scene loaded!');
+    </script>
+</body>
+<script src="/return-button.js?v=1"></script>
+</html>

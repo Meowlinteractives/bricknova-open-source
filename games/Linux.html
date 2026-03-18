@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>terminal · linux simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1e24;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Menlo', 'Monaco', 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
+            padding: 1rem;
+        }
+
+        .terminal-wrapper {
+            width: 100%;
+            max-width: 950px;
+            background: #0c0f14;
+            border-radius: 14px 14px 12px 12px;
+            box-shadow: 0 25px 50px -10px rgba(0, 0, 0, 0.8), inset 0 1px 2px rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+            border: 1px solid #2b3038;
+        }
+
+        /* window title bar */
+        .terminal-header {
+            background: #1e232b;
+            padding: 0.8rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid #090b0e;
+        }
+
+        .window-dots {
+            display: flex;
+            gap: 0.45rem;
+            margin-right: 1rem;
+        }
+
+        .dot {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .dot.red { background: #ff5f56; border: 1px solid #e0443e; }
+        .dot.yellow { background: #ffbd2e; border: 1px solid #df9f23; }
+        .dot.green { background: #27c93f; border: 1px solid #1aab2f; }
+
+        .terminal-title {
+            color: #abb2bf;
+            font-size: 0.85rem;
+            letter-spacing: 0.3px;
+            background: #2c323c;
+            padding: 0.2rem 1.2rem;
+            border-radius: 30px;
+            border: 1px solid #3f4653;
+            box-shadow: inset 0 1px 3px #0a0c0f;
+        }
+
+        .terminal-body {
+            background: #0a0d11;
+            padding: 1.4rem 1.2rem 1.2rem 1.2rem;
+            color: #e3e6eb;
+            font-size: 1rem;
+            line-height: 1.6;
+            min-height: 460px;
+            max-height: 600px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #232731;
+        }
+
+        /* command output styling */
+        .terminal-body > div {
+            margin-bottom: 0.25rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .prompt-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            margin-top: 0.2rem;
+        }
+
+        .prompt {
+            color: #98c379;
+            font-weight: 500;
+            white-space: nowrap;
+            margin-right: 8px;
+        }
+
+        .prompt::before {
+            content: "┌─[";
+        }
+
+        .prompt::after {
+            content: "]";
+        }
+
+        .prompt-user {
+            color: #61afef;
+        }
+
+        .prompt-path {
+            color: #e5c07b;
+        }
+
+        .input-line {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        .input-prefix {
+            color: #98c379;
+            font-weight: bold;
+            margin-right: 6px;
+            white-space: nowrap;
+        }
+
+        .input-prefix::before {
+            content: "└─$";
+        }
+
+        .cmd-input-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: transparent;
+            position: relative;
+        }
+
+        #commandInput {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #e3e6eb;
+            font-family: inherit;
+            font-size: inherit;
+            width: 100%;
+            padding: 0.15rem 0;
+            caret-color: #ffffff;
+        }
+
+        /* faux cursor effect (blinking) */
+        #commandInput {
+            caret-shape: block;
+        }
+
+        .hidden-cursor-helper {
+            display: none;
+        }
+
+        /* scrollbar */
+        .terminal-body::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .terminal-body::-webkit-scrollbar-track {
+            background: #13171f;
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb {
+            background: #3b404b;
+            border-radius: 10px;
+            border: 2px solid #13171f;
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb:hover {
+            background: #555b68;
+        }
+
+        .output-section {
+            margin: 0.2rem 0 0.4rem 0;
+        }
+
+        .output-line {
+            padding-left: 0.5rem;
+            border-left: 2px solid #3e4451;
+            margin: 0.2rem 0 0.2rem 0.5rem;
+        }
+
+        .error-msg {
+            color: #e06c75;
+        }
+
+        .success {
+            color: #98c379;
+        }
+
+        .filesystem-ls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .ls-item {
+            color: #e3e6eb;
+        }
+
+        .ls-dir {
+            color: #61afef;
+            font-weight: 500;
+        }
+
+        .ls-exe {
+            color: #98c379;
+        }
+
+        /* tiny spacing */
+        .mb-1 { margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+<div class="terminal-wrapper">
+    <div class="terminal-header">
+        <div class="window-dots">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+        </div>
+        <span class="terminal-title">user@linux-terminal:~/sim</span>
+    </div>
+
+    <div class="terminal-body" id="terminalBody">
+        <!-- welcome message -->
+        <div class="output-section">
+            <div>╭────────────────────────────────────╮</div>
+            <div>│   Linux Terminal Simulator (bash)  │</div>
+            <div>│   type '<span style="color:#e5c07b">help</span>' for available commands │</div>
+            <div>╰────────────────────────────────────╯</div>
+        </div>
+
+        <!-- dynamic prompt + input line -->
+        <div class="prompt-line">
+            <span class="prompt"><span class="prompt-user">user</span>@<span class="prompt-user">linuxbox</span> <span class="prompt-path">~</span></span>
+        </div>
+        <div class="input-line" id="inputLine">
+            <span class="input-prefix"></span>
+            <div class="cmd-input-wrapper">
+                <input type="text" id="commandInput" spellcheck="false" autofocus placeholder="type command...">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---------- filesystem simulation (very basic) ----------
+        const filesystem = {
+            '/': {
+                type: 'dir',
+                content: {
+                    'home': { type: 'dir', content: {} },
+                    'usr': { type: 'dir', content: {} },
+                    'bin': { type: 'dir', content: {} },
+                    'etc': { type: 'dir', content: {} },
+                    'tmp': { type: 'dir', content: {} },
+                    'README.md': { type: 'file', content: '# Linux simulator\nbasic file system demo' },
+                    'hello_world': { type: 'file', content: '#!/bin/bash\necho "hello world"' },
+                }
+            },
+        };
+
+        // helper to resolve path (absolute only, simplified)
+        function resolvePath(path, cwd) {
+             else {
+                outputDiv.appendChild(content);
+            }
+
+            // insert before the prompt-line (which is the second last element?) careful: layout:
+            // terminalBody children: [welcome, prompt-line, input-line] . We insert before prompt-line
+            const promptLineElem = document.querySelector('.prompt-line');
+            terminalBody.insertBefore(outputDiv, promptLineElem);
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        // clear output (keep prompt & input)
+        function clearOutputAbovePrompt() {
+            const promptElem = document.querySelector('.prompt-line');
+            const children = Array.from(terminalBody.children);
+            for (let child of children) {
+                if (child !== promptElem && child !== document.querySelector('.input-line')) {
+                    child.remove();
+                }
+            }
+        }
+
+        // filesystem commands (basic)
+        function cmd_ls(args) {
+            const targetDir = args.length ? args[0] : '.';
+            let targetPath = targetDir.startsWith('/') ? targetDir : (currentDir === '/' ? '/' + targetDir : currentDir + '/' + targetDir);
+            targetPath = resolvePath(targetPath, currentDir);
+            const nodeInfo = getNode(filesystem, targetPath);
+            if (!nodeInfo || nodeInfo.node.type !== 'dir') {
+                printOutput(`ls: cannot access '${targetDir}': No such directory`, 'error-msg');
+                return;
+            }
+            const dirNode = nodeInfo.node;
+            const items = Object.keys(dirNode.content || {}).sort();
+            if (items.length === 0) {
+                printOutput('', '');
+                return;
+            }
+            const container = document.createElement('div');
+            container.className = 'filesystem-ls';
+            items.forEach(item => {
+                const node = dirNode.content[item];
+                const span = document.createElement('span');
+                span.className = 'ls-item ' + (node.type === 'dir' ? 'ls-dir' : (item.includes('.') ? '' : 'ls-exe'));
+                span.textContent = item + (node.type === 'dir' ? '/' : '');
+                container.appendChild(span);
+            });
+            printOutput(container);
+        }
+
+        function cmd_cd(args) {
+            if (args.length === 0) {
+                currentDir = '/home/user';
+                // ensure home exists (crude)
+                const homeNode = getNode(filesystem, '/home');
+                if (!homeNode) {
+                    filesystem['/'].content['home'] = { type: 'dir', content: {} };
+                }
+                const userNode = getNode(filesystem, '/home/user');
+                if (!userNode) {
+                    filesystem['/'].content['home'].content['user'] = { type: 'dir', content: {} };
+                }
+                updatePromptDisplay();
+                return;
+            }
+            const target = args[0];
+            let newPath = target.startsWith('/') ? target : (currentDir === '/' ? '/' + target : currentDir + '/' + target);
+            newPath = resolvePath(newPath, currentDir);
+            const nodeInfo = getNode(filesystem, newPath);
+            if (!nodeInfo || nodeInfo.node.type !== 'dir') {
+                printOutput(`cd: ${target}: No such directory`, 'error-msg');
+                return;
+            }
+            currentDir = newPath;
+            updatePromptDisplay();
+        }
+
+        function cmd_pwd() {
+            printOutput(currentDir, 'success');
+        }
+
+        function cmd_echo(args) {
+            const output = args.join(' ') || '';
+            printOutput(output);
+        }
+
+        function cmd_clear() {
+            clearOutputAbovePrompt();
+        }
+
+        function cmd_help() {
+            const helpText = `
+<span style="color:#98c379;">available commands:</span>
+  <span style="color:#e5c07b;">help</span>         show this help
+  <span style="color:#e5c07b;">ls [path]</span>    list directory contents
+  <span style="color:#e5c07b;">cd [dir]</span>     change directory (default: ~)
+  <span style="color:#e5c07b;">pwd</span>          print current directory
+  <span style="color:#e5c07b;">echo [...]</span>   echo arguments
+  <span style="color:#e5c07b;">clear</span>        clear screen
+  <span style="color:#e5c07b;">mkdir [dir]</span>  create directory (simple)
+  <span style="color:#e5c07b;">touch [file]</span>  create empty file
+  <span style="color:#e5c07b;">rm [path]</span>     remove file/dir (no flags)
+  <span style="color:#e5c07b;">date</span>         show current date/time
+  <span style="color:#e5c07b;">whoami</span>       print user name
+  <span style="color:#e5c07b;">cat [file]</span>    show file content (demo)
+            `;
+            printOutput(helpText);
+        }
+
+        function cmd_mkdir(args) {
+            if (!args.length) { printOutput('mkdir: missing operand', 'error-msg'); return; }
+            const dirName = args[0];
+            let targetPath = dirName.startsWith('/') ? dirName : (currentDir === '/' ? '/' + dirName : currentDir + '/' + dirName);
+            targetPath = resolvePath(targetPath, currentDir);
+            const parts = targetPath.split('/').filter(p => p !== '');
+            const dirNameOnly = parts.pop();
+            const parentPath = '/' + parts.join('/');
+            const parentNode = getNode(filesystem, parentPath || '/');
+            if (!parentNode || parentNode.node.type !== 'dir') {
+                printOutput(`mkdir: cannot create directory '${dirName}': parent missing`, 'error-msg');
+                return;
+            }
+            if (parentNode.node.content[dirNameOnly]) {
+                printOutput(`mkdir: cannot create directory '${dirName}': File exists`, 'error-msg');
+                return;
+            }
+            parentNode.node.content[dirNameOnly] = { type: 'dir', content: {} };
+            printOutput('', '');
+        }
+
+        function cmd_touch(args) {
+            if (!args.length) return;
+            const filePath = args[0];
+            let targetPath = filePath.startsWith('/') ? filePath : (currentDir === '/' ? '/' + filePath : currentDir + '/' + filePath);
+            targetPath = resolvePath(targetPath, currentDir);
+            const parts = targetPath.split('/').filter(p => p !== '');
+            const fileName = parts.pop();
+            const parentPath = '/' + parts.join('/');
+            const parentNode = getNode(filesystem, parentPath || '/');
+            if (!parentNode || parentNode.node.type !== 'dir') return;
+            if (!parentNode.node.content[fileName]) {
+                parentNode.node.content[fileName] = { type: 'file', content: '' };
+            } else {
+                // update timestamp? just noop
+            }
+        }
+
+        function cmd_rm(args) {
+            if (!args.length) { printOutput('rm: missing operand', 'error-msg'); return; }
+            const target = args[0];
+            let targetPath = target.startsWith('/') ? target : (currentDir === '/' ? '/' + target : currentDir + '/' + target);
+            targetPath = resolvePath(targetPath, currentDir);
+            if (targetPath === '/') { printOutput('rm: cannot remove root', 'error-msg'); return; }
+            const parts = targetPath.split('/').filter(p => p !== '');
+            const base = parts.pop();
+            const parentPath = '/' + parts.join('/');
+            const parentNode = getNode(filesystem, parentPath || '/');
+            if (!parentNode || parentNode.node.type !== 'dir' || !parentNode.node.content[base]) {
+                printOutput(`rm: cannot remove '${target}': No such file`, 'error-msg');
+                return;
+            }
+            delete parentNode.node.content[base];
+        }
+
+        function cmd_date() {
+            printOutput(new Date().toString());
+        }
+
+        function cmd_whoami() {
+            printOutput(username);
+        }
+
+        function cmd_cat(args) {
+            if (!args.length) return;
+            const file = args[0];
+            let targetPath = file.startsWith('/') ? file : (currentDir === '/' ? '/' + file : currentDir + '/' + file);
+            targetPath = resolvePath(targetPath, currentDir);
+            const nodeInfo = getNode(filesystem, targetPath);
+            if (!nodeInfo || nodeInfo.node.type !== 'file') {
+                printOutput(`cat: ${file}: No such file`, 'error-msg');
+                return;
+            }
+            const content = nodeInfo.node.content || '';
+            printOutput(content);
+        }
+
+        // command dispatcher
+        function executeCommand(cmdLine) {
+            if (!cmdLine.trim()) return;
+            history.push(cmdLine);
+            historyIndex = history.length; // reset
+
+            const parts = cmdLine.trim().match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+            const cmd = parts[0].toLowerCase();
+            const args = parts.slice(1).map(arg => arg.replace(/^"(.*)"$/, '$1'));
+
+            // print command line as in real terminal (with prompt)
+            const echoDiv = document.createElement('div');
+            echoDiv.style.color = '#abb2bf';
+            echoDiv.innerHTML = `<span style="color:#98c379;">└─$</span> ${cmdLine}`;
+            const promptElem = document.querySelector('.prompt-line');
+            terminalBody.insertBefore(echoDiv, promptElem);
+
+            // dispatch
+            switch(cmd) {
+                case 'ls': cmd_ls(args); break;
+                case 'cd': cmd_cd(args); break;
+                case 'pwd': cmd_pwd(); break;
+                case 'echo': cmd_echo(args); break;
+                case 'clear': cmd_clear(); break;
+                case 'help': cmd_help(); break;
+                case 'mkdir': cmd_mkdir(args); break;
+                case 'touch': cmd_touch(args); break;
+                case 'rm': cmd_rm(args); break;
+                case 'date': cmd_date(); break;
+                case 'whoami': cmd_whoami(); break;
+                case 'cat': cmd_cat(args); break;
+                default: printOutput(`bash: ${cmd}: command not found`, 'error-msg');
+            }
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        // input handling
+        function onInputKeydown(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const cmd = commandInput.value;
+                commandInput.value = '';
+                executeCommand(cmd);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (history.length > 0) {
+                    if (historyIndex > 0) historyIndex--;
+                    else historyIndex = 0;
+                    commandInput.value = history[historyIndex] || '';
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (history.length > 0) {
+                    if (historyIndex < history.length - 1) historyIndex++;
+                    else {
+                        historyIndex = history.length;
+                        commandInput.value = '';
+                        return;
+                    }
+                    commandInput.value = history[historyIndex] || '';
+                }
+            }
+        }
+
+        // ensure focus stays on input (click anywhere focuses)
+        terminalBody.addEventListener('click', () => {
+            commandInput.focus();
+        });
+
+        // initial setup: ensure /home/user exists
+        (function initFS() {
+            if (!getNode(filesystem, '/home')) {
+                filesystem['/'].content['home'] = { type: 'dir', content: {} };
+            }
+            if (!getNode(filesystem, '/home/user')) {
+                filesystem['/'].content['home'].content['user'] = { type: 'dir', content: {} };
+            }
+            currentDir = '/home/user';
+            updatePromptDisplay();
+        })();
+
+        commandInput.addEventListener('keydown', onInputKeydown);
+
+        // on any blur/focus keep input visible
+        window.addEventListener('load', () => {
+            commandInput.focus();
+        });
+    })();
+</script>
+</body>
+<script src="/return-button.js?v=1"></script>
+</html>

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>click·shape – fast tap game</title>
+  <style>
+    /* GLOBAL RESET & FONTS */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none; /* prevent accidental text selection while tapping */
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: linear-gradient(145deg, #1b2b4e 0%, #2a3f66 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+      touch-action: manipulation; /* disables double‑tap zoom */
+      padding: 12px;
+      margin: 0;
+    }
+
+    .game-wrapper {
+      width: 100%;
+      max-width: 600px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(4px);
+      border-radius: 56px 56px 48px 48px;
+      box-shadow: 0 25px 40px -10px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+      padding: 24px 20px 32px 20px;
+    }
+
+    /* header area: score + high score + shape counter */
+    .stats-panel {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(10, 20, 35, 0.7);
+      border-radius: 120px;
+      padding: 10px 20px;
+      margin-bottom: 24px;
+      color: white;
+      text-shadow: 0 2px 3px #00000050;
+      font-weight: 600;
+      border: 1px solid #ffffff30;
+      gap: 10px;
+    }
+
+    .score-box {
+      background: #ffd966;
+      color: #1f2a3f;
+      padding: 8px 24px;
+      border-radius: 40px;
+      font-size: 2rem;
+      line-height: 1.2;
+      letter-spacing: 2px;
+      text-shadow: 0 1px 2px #ffeeaa;
+      box-shadow: inset 0 -3px 0 #b38f40, 0 6px 12px #00000050;
+      min-width: 110px;
+      text-align: center;
+    }
+
+    .highscore-box {
+      background: #5f7b9c;
+      padding: 8px 16px;
+      border-radius: 40px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      box-shadow: inset 0 -2px 0 #2f4a6e;
+    }
+    .highscore-box span {
+      font-size: 1.8rem;
+      line-height: 1;
+      color: #fee7a0;
+      margin-left: 4px;
+    }
+
+    .target-counter {
+      background: #3e5a7a;
+      padding: 8px 18px;
+      border-radius: 40px;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: inset 0 -2px 0 #1f364f;
+    }
+    .target-counter span {
+      font-weight: 800;
+      font-size: 1.8rem;
+      color: #c7e5fc;
+    }
+
+    /* play area – shapes appear inside here */
+    .playground {
+      background-color: #eaf0fc;
+      background-image: radial-gradient(circle at 30% 40%, #ffffff80 5%, transparent 20%),
+                        repeating-linear-gradient(45deg, #ced8e8 0px, #ced8e8 2px, transparent 2px, transparent 12px);
+      border-radius: 48px;
+      box-shadow: inset 0 0 30px #00000040, 0 20px 25px #00000060;
+      width: 100%;
+      aspect-ratio: 1 / 1;   /* perfect square – great for mobile tap area */
+      position: relative;
+      border: 5px solid #fffbee;
+      touch-action: none;    /* prevent scroll/pinch while tapping inside */
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+
+    /* every shape is absolutely positioned */
+    .shape {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      background: gold;
+      border-radius: 20px 8px 30px 8px; /* playful blob, will be overridden per shape */
+      box-shadow: 0 8px 0 #b47d2b, 0 12px 20px rgba(0, 0, 0, 0.4);
+      transition: transform 0.05s ease, box-shadow 0.1s;
+      will-change: left, top;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: bold;
+      color: #30200b;
+      text-shadow: 0 2px 3px #ffeeaa;
+      border: 3px solid white;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    /* small enlargement on active tap */
+    .shape:active {
+      transform: scale(1.1);
+      box-shadow: 0 4px 0 #b47d2b, 0 16px 28px black;
+    }
+
+    /* different shape variations using data attributes (set by js) */
+    .shape[data-shape="circle"] {
+      border-radius: 50%;
+      background: #f47b7b;
+      box-shadow: 0 8px 0 #aa4444, 0 12px 20px rgba(0, 0, 0, 0.4);
+    }
+    .shape[data-shape="square"] {
+      border-radius: 12px;
+      background: #6bc96b;
+      box-shadow: 0 8px 0 #2f7a2f, 0 12px 20px rgba(0, 0, 0, 0.4);
+    }
+    .shape[data-shape="triangle"] {
+      /* pseudo-element triangle, because background tricks are limited */
+      background: #d49b3b;
+      width: 0;
+      height: 0;
+      border-left: 35px solid transparent;
+      border-right: 35px solid transparent;
+      border-bottom: 70px solid #ffb347;
+      background: none;
+      box-shadow: none;
+      border-radius: 0;
+      border-top: none;
+      position: absolute;
+    }
+    /* fix inner text for triangle (we use pseudo) – triangle uses ::after for emoji */
+    .shape[data-shape="triangle"]::after {
+      content: "🔺";
+      position: absolute;
+      top: 28px;
+      left: -18px;
+      font-size: 32px;
+      filter: drop-shadow(2px 6px 3px #00000050);
+    }
+    .shape[data-shape="star"] {
+      background: #d973d9;
+      border-radius: 50% 50% 0 50%;
+      transform: rotate(15deg);
+      box-shadow: 0 8px 0 #913e91, 0 12px 20px rgba(0, 0, 0, 0.4);
+    }
+    /* all shapes (except triangle) hold an emoji */
+    .shape:not([data-shape="triangle"])::after {
+      content: attr(data-emoji);
+      font-size: 38px;
+      filter: drop-shadow(0 4px 2px #00000050);
+    }
+
+    /* control row */
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    button {
+      background: #ffd966;
+      border: none;
+      font-weight: 700;
+      font-size: 1.7rem;
+      padding: 16px 30px;
+      border-radius: 60px;
+      color: #1e2d47;
+      box-shadow: 0 8px 0 #9e762f, 0 8px 20px black;
+      transition: 0.06s linear;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      border: 2px solid #fff5cf;
+      flex: 1 1 auto;
+      min-width: 170px;
+      letter-spacing: 2px;
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+
+    button:active {
+      transform: translateY(6px);
+      box-shadow: 0 2px 0 #9e762f, 0 8px 18px black;
+    }
+
+    .new-shape-btn {
+      background: #b3d0ff;
+      box-shadow: 0 8px 0 #61799e;
+    }
+
+    /* mobile fine-tuning */
+    @media (max-width: 480px) {
+      .game-wrapper { padding: 16px 12px 20px; }
+      .score-box { font-size: 1.8rem; padding: 5px 16px; }
+      .highscore-box { font-size: 1rem; }
+      .highscore-box span { font-size: 1.5rem; }
+      .target-counter { font-size: 1rem; }
+      .target-counter span { font-size: 1.5rem; }
+      button { font-size: 1.4rem; padding: 14px 16px; min-width: 130px; }
+      .shape { width: 60px; height: 60px; }
+      .shape[data-shape="triangle"] {
+        border-left-width: 30px;
+        border-right-width: 30px;
+        border-bottom-width: 60px;
+      }
+      .shape[data-shape="triangle"]::after { top: 22px; left: -17px; font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+<div class="game-wrapper">
+  <!-- top stats -->
+  <div class="stats-panel">
+    <div class="score-box" id="scoreDisplay">0</div>
+    <div class="highscore-box">🏆<span id="highScoreDisplay">0</span></div>
+    <div class="target-counter">🎯<span id="shapeCountDisplay">3</span></div>
+  </div>
+
+  <!-- click arena -->
+  <div class="playground" id="playground"></div>
+
+  <!-- game controls -->
+  <div class="actions">
+    <button id="restartBtn">⟳ RESTART</button>
+    <button id="newShapeBtn" class="new-shape-btn">➕ SHAPE</button>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // ------- game state --------
+    let score = 0;
+    let highScore = 0;
+    let shapes = [];               // holds {id, element, shapeType, emoji}
+    let nextId = 1000;
+    const playground = document.getElementById('playground');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const highScoreDisplay = document.getElementById('highScoreDisplay');
+    const shapeCountSpan = document.getElementById('shapeCountDisplay');
+
+    // possible shapes with emojis
+    const shapeTypes = [
+      { type: 'circle', emoji: '⚪' },
+      { type: 'square', emoji: '🟩' },
+      { type: 'triangle', emoji: '🔺' },   // triangle uses its own pseudo
+      { type: 'star', emoji: '⭐' }
+    ];
+
+    // ----- helper: update UI stats -----
+    function refreshStats() {
+      scoreDisplay.textContent = score;
+      shapeCountSpan.textContent = shapes.length;
+      if (score > highScore) {
+        highScore = score;
+        highScoreDisplay.textContent = highScore;
+      }
+    }
+
+    // ----- generate random position (within playground) for a 70px shape (60px on mobile) -----
+    function getRandomPosition() {
+      const playgroundRect = playground.getBoundingClientRect();
+      // but we use relative % against parent, playground is square.
+      // shape size: 70px normally, but media query might reduce to 60px.
+      // For robustness, read actual shape size from a dummy? simpler: compute using 70px (but clamp)
+      // but we want to avoid shapes going out of bounds. Use vw? safer: compute based on parent dimensions.
+      const parentWidth = playground.offsetWidth;
+      const parentHeight = playground.offsetHeight;
+      // shape base size (min 60px through media query, but we detect maybe 70)
+      // we can read from any shape? We'll pick 70 as base, but check if smaller.
+      // Better: get computed style of an existing shape if any, else default 70.
+      let shapeSize = 70;
+      if (shapes.length > 0) {
+        const first = shapes[0].element;
+        shapeSize = first.offsetWidth;   // actual rendered width (could be 60 on small)
+      } else {
+        // fallback: check via media query hint? use 70 but clamp manually.
+        if (window.innerWidth <= 480) shapeSize = 60;
+      }
+      // ensure shape stays fully inside playground (0 to width - size)
+      const maxLeft = Math.max(0, parentWidth - shapeSize);
+      const maxTop = Math.max(0, parentHeight - shapeSize);
+      const left = Math.floor(Math.random() * (maxLeft + 1));
+      const top = Math.floor(Math.random() * (maxTop + 1));
+      return { left, top, size: shapeSize };
+    }
+
+    // ----- create a new shape element with random type and position -----
+    function createShapeElement() {
+      const randomIndex = Math.floor(Math.random() * shapeTypes.length);
+      const { type, emoji } = shapeTypes[randomIndex];
+      const shapeDiv = document.createElement('div');
+      shapeDiv.className = 'shape';
+      shapeDiv.setAttribute('data-shape', type);
+      shapeDiv.setAttribute('data-emoji', emoji);   // for ::after content
+      shapeDiv.id = `shape-${nextId++}`;
+
+      // set initial inline position (will be overridden later)
+      const { left, top } = getRandomPosition();
+      shapeDiv.style.left = left + 'px';
+      shapeDiv.style.top = top + 'px';
+
+      // add click/tap handler
+      shapeDiv.addEventListener('click', shapeClickHandler);
+      shapeDiv.addEventListener('touchstart', (e) => {
+        e.preventDefault();    // prevent double tap zoom or scroll
+        shapeClickHandler(e);  // reuse same handler
+      }, { passive: false });
+
+      return shapeDiv;
+    }
+
+    // ----- handler for shape clicks (score increment + removal) -----
+    function shapeClickHandler(e) {
+      e.stopPropagation();  // avoid playground background trigger
+      const targetShape = e.currentTarget;
+      const id = targetShape.id;
+      // find index in shapes array
+      const index = shapes.findIndex(s => s.element.id === id);
+      if (index !== -1) {
+        // increase score
+        score += 1;
+        // remove from DOM
+        targetShape.remove();
+        // remove from array
+        shapes.splice(index, 1);
+        // update stats
+        refreshStats();
+      }
+    }
+
+    // ----- add a brand new shape to the game (max 15 for readability) -----
+    function addShape() {
+      if (shapes.length >= 15) {
+        // optional subtle warning (haptic? just ignore)
+        return;
+      }
+      const shapeEl = createShapeElement();
+      playground.appendChild(shapeEl);
+      shapes.push({ id: shapeEl.id, element: shapeEl });
+      refreshStats();
+    }
+
+    // ----- restart: remove all shapes, reset score, add 3 initial shapes -----
+    function restartGame() {
+      // remove all shape elements
+      shapes.forEach(s => s.element.remove());
+      shapes = [];
+      score = 0;
+      // add three fresh shapes
+      for (let i = 0; i < 3; i++) {
+        addShape();    // addShape pushes to array & updates stats
+      }
+      // refresh highscore (score=0, maybe highScore remains)
+      refreshStats();
+    }
+
+    // ----- optional: playground background click adds shape? we don't want misclicks, so disable.
+    // but we use newShapeBtn for adding.
+
+    // ----- event listeners -----
+    document.getElementById('restartBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      restartGame();
+    });
+    document.getElementById('restartBtn').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      restartGame();
+    }, { passive: false });
+
+    document.getElementById('newShapeBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      addShape();
+    });
+    document.getElementById('newShapeBtn').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      addShape();
+    }, { passive: false });
+
+    // prevent accidental context menu / save on playground
+    playground.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // Initialize game on page load
+    window.addEventListener('load', () => {
+      restartGame();  // sets 3 shapes, score 0
+    });
+
+    // optional: reposition shapes on resize so they don't go out of bounds
+    // simple approach: reposition all shapes relative to new playground size
+    function repositionAllShapes() {
+      if (shapes.length === 0) return;
+      // get playground dimensions
+      const parentW = playground.offsetWidth;
+      const parentH = playground.offsetHeight;
+      shapes.forEach(item => {
+        const el = item.element;
+        const size = el.offsetWidth;  // actual displayed size (60 or 70)
+        const maxLeft = Math.max(0, parentW - size);
+        const maxTop = Math.max(0, parentH - size);
+        // keep current left/top if possible, else clamp
+        let left = parseFloat(el.style.left) || 0;
+        let top = parseFloat(el.style.top) || 0;
+        left = Math.min(maxLeft, Math.max(0, left));
+        top = Math.min(maxTop, Math.max(0, top));
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+      });
+    }
+
+    // reposition on orientation change or resize (debounced)
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        repositionAllShapes();
+      }, 100);
+    });
+  })();
+</script>
+</body>
+<script src="/return-button.js?v=1"></script>
+</html>
